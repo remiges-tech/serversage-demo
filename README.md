@@ -35,25 +35,26 @@ ServerSage is an observability product that helps monitor and visualize system m
 - Username: admin
 - Password: serversage
 
-### Adding Prometheus as a Data Source in Grafana
-1. Log in to Grafana
-2. Go to Configuration > Data Sources
-3. Click "Add data source"
-4. Select "Prometheus"
-5. Set URL to: http://prometheus:9090
-6. Click "Save & Test"
+### Grafana Data Sources
+Prometheus is automatically configured as the default data source in Grafana through the provisioning system. No manual configuration is required.
 
 ### CloudWatch Metrics
-The CloudWatch exporter is configured to collect the following metrics:
-- EC2:
-  - CPUUtilization
-  - NetworkIn
-  - NetworkOut
-- RDS:
-  - CPUUtilization
-  - FreeStorageSpace
+The CloudWatch exporter is configured to collect the following EC2 metrics:
+- CPUUtilization
+- NetworkIn
+- NetworkOut
+- EBSReadBytes
+- EBSWriteBytes
 
 To modify the metrics being collected, edit `cloudwatch-exporter/config.yml`.
+
+### Dashboards
+A pre-configured EC2 metrics dashboard is available in Grafana showing:
+- CPU Utilization
+- Network Traffic (In/Out)
+- EBS Disk I/O (Read/Write)
+
+The dashboard is automatically provisioned and will show metrics for all EC2 instances in your configured AWS region.
 
 ### Stopping the Services
 ```bash

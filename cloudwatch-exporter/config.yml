@@ -4,23 +4,28 @@ metrics:
     aws_metric_name: CPUUtilization
     aws_dimensions: [InstanceId]
     aws_statistics: [Average]
+    period_seconds: 60
 
   - aws_namespace: AWS/EC2
     aws_metric_name: NetworkIn
     aws_dimensions: [InstanceId]
     aws_statistics: [Average]
+    period_seconds: 60
 
   - aws_namespace: AWS/EC2
     aws_metric_name: NetworkOut
     aws_dimensions: [InstanceId]
     aws_statistics: [Average]
+    period_seconds: 60
 
-  - aws_namespace: AWS/RDS
-    aws_metric_name: CPUUtilization
-    aws_dimensions: [DBInstanceIdentifier]
+  - aws_namespace: AWS/EC2
+    aws_metric_name: EBSReadBytes
+    aws_dimensions: [InstanceId]
     aws_statistics: [Average]
+    period_seconds: 60
 
-  - aws_namespace: AWS/RDS
-    aws_metric_name: FreeStorageSpace
-    aws_dimensions: [DBInstanceIdentifier]
+  - aws_namespace: AWS/EC2
+    aws_metric_name: EBSWriteBytes
+    aws_dimensions: [InstanceId]
     aws_statistics: [Average]
+    period_seconds: 60
