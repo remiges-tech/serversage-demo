@@ -1,6 +1,7 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 1m
+  evaluation_interval: 1m
+  scrape_timeout: 30s
 
 scrape_configs:
   - job_name: 'prometheus'
@@ -9,5 +10,8 @@ scrape_configs:
 
   - job_name: 'cloudwatch'
     scrape_interval: 1m
+    scrape_timeout: 30s
+    metrics_path: /metrics
+    scheme: http
     static_configs:
       - targets: ['cloudwatch-exporter:9106']
