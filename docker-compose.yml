@@ -15,6 +15,8 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
     restart: unless-stopped
+    networks:
+      - serversage-network
 
   grafana:
     image: grafana/grafana:latest
@@ -24,12 +26,15 @@ services:
     volumes:
       - ./data/grafana:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=serversage
     depends_on:
       - prometheus
     restart: unless-stopped
+    networks:
+      - serversage-network
 
   cloudwatch-exporter:
     image: prom/cloudwatch-exporter:latest
@@ -45,3 +50,9 @@ services:
     command:
       - /config/config.yml
     restart: unless-stopped
+    networks:
+      - serversage-network
+
+networks:
+  serversage-network:
+    driver: bridge
