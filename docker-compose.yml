@@ -17,7 +17,9 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
     restart: unless-stopped
     networks:
-      - serversage-network
+      serversage-network:
+        aliases:
+          - prometheus
 
   grafana:
     image: grafana/grafana:latest
@@ -35,11 +37,12 @@ services:
       - prometheus
     restart: unless-stopped
     networks:
-      - serversage-network
+      serversage-network:
+        aliases:
+          - grafana
 
   cloudwatch-exporter:
     image: prom/cloudwatch-exporter:latest
-    container_name: serversage-cloudwatch
     ports:
       - "9106:9106"
     volumes:
@@ -52,8 +55,12 @@ services:
       - /config/config.yml
     restart: unless-stopped
     networks:
-      - serversage-network
+      serversage-network:
+        aliases:
+          - cloudwatch-exporter
 
 networks:
   serversage-network:
     driver: bridge
+    name: serversage-network
+    attachable: true
