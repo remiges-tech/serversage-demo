@@ -67,7 +67,7 @@ services:
     user: "root"
     restart: always
     ports:
-      - "8085:8085"
+      - "8080:8080"
     command: sh -c "uwsgi --ini uwsgi.ini"
     environment:
       DATABASE_TYPE: sqlite3
@@ -237,10 +237,18 @@ services:
       - KC_DB_URL_DATABASE=${POSTGRES_DB}
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_METRICS_ENABLED=true
+      - KC_HTTP_METRICS_HISTOGRAMS_ENABLED=true
+      - KC_CACHE_METRICS_HISTOGRAMS_ENABLED=true
+      - KC_HTTP_METRICS_SLOS=5,10,25,50,250,500,1000,2500,5000,10000
+      - KC_EVENT_METRICS_USER_ENABLED=true
+      - KC_EVENT_METRICS_USER_EVENTS=login,logout,register,update_profile,reset_password,user_disabled_by_temporary_lockout,user_disabled_by_permanent_lockout
+      - KC_EVENT_METRICS_USER_TAGS=realm,clientId,idp
     depends_on:
       - postgres
     ports:
       - '3002:8080'
+      - '9000:9000'
     volumes:
       - ./keycloak/realm-import:/opt/keycloak/data/import
     networks:
