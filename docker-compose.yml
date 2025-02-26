@@ -290,11 +290,14 @@ services:
     container_name: serversage-postgres-exporter
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+      PG_EXPORTER_EXTEND_QUERY_PATH: "/queries.yaml"
+    volumes:
+      - ./etc/queries.yaml:/queries.yaml
     ports:
       - "9187:9187"
     depends_on:
       - postgres
-    restart: unless-stopped
+#    restart: unless-stopped
     networks:
       serversage-network:
         aliases:
