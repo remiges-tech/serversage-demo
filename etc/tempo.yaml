@@ -1,0 +1,24 @@
+server:
+  http_listen_port: 3200
+
+ingester:
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+
+distributor:
+  receivers:
+    otlp:
+      protocol: grpc
+      host: 0.0.0.0
+      port: 4317
+
+  queue:
+    max_samples_per_send: 10000
+
+store:
+  trace:
+    backend: local
+    local:
+      path: /data/tempo/traces

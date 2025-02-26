@@ -30,3 +30,8 @@ scrape_configs:
     static_configs:
       - targets: ['postgres-exporter:9187']
     scrape_interval: 15s
+
+  - job_name: 'java-apm-trace-metrics'
+    static_configs:
+    - targets: ['otel-collector:8889']
+    scrape_interval: 15s

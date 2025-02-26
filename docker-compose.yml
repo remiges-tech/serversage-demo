@@ -1,10 +1,101 @@
 version: '3.8'
 
 services:
+
+  fastapi:
+    # build: ./app_fastapi/
+    image: ghcr.io/blueswen/opentelemetry-apm/fastapi:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - TARGET_ONE_SVC=spring-boot:8081
+      - TARGET_TWO_SVC=spring-boot:8081
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_SERVICE_NAME=fastapi
+    command: "opentelemetry-instrument python main.py"
+    container_name: serversage-fastapi
+    networks:
+      serversage-network:
+        aliases:
+          - fastapi
+
+  spring-boot:
+    # build: ./app_springboot/
+    image: aniketxshinde/serversage:0.1.0
+    ports:
+      - "8081:8081"
+    environment:
+      - TARGET_ONE_SVC=fastapi:8000
+      - TARGET_TWO_SVC=fastapi:8000
+      - SERVER_PORT=8081
+      - OTEL_EXPORTER=otlp_span
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_SERVICE_NAME=spring-boot
+    command: "java -javaagent:/opentelemetry-javaagent.jar -jar /app.jar"
+    container_name: serversage-spring-boot
+    networks:
+      serversage-network:
+        aliases:
+          - spring-boot
+  express:
+    # build: ./app_express/
+    image: ghcr.io/blueswen/opentelemetry-apm/express:latest
+    ports:
+      - "3001:3001"
+    environment:
+      - EXPOSE_PORT=3001
+      - TARGET_ONE_SVC=fastapi:8000
+      - TARGET_TWO_SVC=fastapi:8000
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=express
+    command: "node --require '@opentelemetry/auto-instrumentations-node/register' app.js"
+    container_name: serversage-express
+    networks:
+      serversage-network:
+        aliases:
+          - express
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command:
+      - "--config=/conf/config.yaml"
+    volumes:
+      - ./etc/otel-collector-config.yaml:/conf/config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP http receiver
+      - "8889:8889" # Prometheus metrics exporter
+    restart: on-failure
+    container_name: otel-collector
+    networks:
+      serversage-network:
+        aliases:
+          - otel-collector
+
+  tempo:
+    image: grafana/tempo:latest
+    command: [ "--target=all", "--storage.trace.backend=local", "--storage.trace.local.path=/var/tempo", "--auth.enabled=false" ]
+    user: root
+    volumes:
+      - ./data/tempo:/var/tempo
+      # - ./etc/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "14250:14250"
+    container_name: serversage-tempo
+    networks:
+      serversage-network:
+        aliases:
+          - tempo
+
   prometheus:
     image: prom/prometheus:latest
     container_name: serversage-prometheus
-    user: "65534:65534"  # nobody:nobody user
+    # user: "65534:65534"  # nobody:nobody user
+    user: root
     ports:
       - "9090:9090"
     volumes:
@@ -15,6 +106,8 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      # - '--storage.tsdb.retention.time=30d'  # Set retention period
+      # - '--storage.tsdb.retention.size=50GB'  # Data older than 30d OR exceeding 50GB will be deleted
     restart: unless-stopped
     networks:
       serversage-network:
@@ -22,15 +115,22 @@ services:
           - prometheus
 
   grafana:
-    image: grafana/grafana-oss:11.5.1-ubuntu
+    image: aniketxshinde/serversage:latest
     container_name: serversage-grafana
+    user: root
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - ./data/grafana:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     environment:
+      # GF_PATHS_DATA: /data/grafana
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: serversage
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
@@ -52,8 +152,6 @@ services:
       GF_AUTH_SIGNOUT_REDIRECT_URL: ${KEYCLOAK_LOGOUT_URL}?id_token_hint=%{id_token}&post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: contains(roles[*], 'grafana_grafana_admin') && 'GrafanaAdmin' || contains(roles[*], 'grafana_admin') && 'Admin' || contains(roles[*], 'grafana_editor') && 'Editor' || 'Viewer'
       GF_PLUGINS_PREINSTALL: grafana-llm-app,grafana-oncall-app
-
-
     depends_on:
       - prometheus
     restart: unless-stopped
@@ -61,6 +159,20 @@ services:
       serversage-network:
         aliases:
           - grafana
+
+  grafana-init:
+    image: alpine/curl:latest
+    depends_on:
+      grafana:
+        condition: service_healthy
+    command: 
+      - sh
+      - ./enable-grafana-oncall-plugin.sh
+    restart: "no" # Run once and exit
+    networks:
+      serversage-network:
+        aliases:
+          - grafana-init
 
   oncall:
     image: grafana/oncall
@@ -201,6 +313,7 @@ services:
     command:
       - /config/config.yml
     restart: unless-stopped
+    # container_name: serversage-cloudwatch-exporter
     networks:
       serversage-network:
         aliases:
@@ -278,3 +391,6 @@ networks:
     driver: bridge
     name: serversage-network
     attachable: true
+
+volumes:
+  data:
