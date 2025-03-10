@@ -80,6 +80,44 @@ services:
       serversage-network:
         aliases:
           - express
+
+# OpenSearch
+  opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    container_name: serversage-opensearch
+    deploy:
+      resources:
+        limits:
+          memory: 700mb
+    restart: unless-stopped
+    environment:
+      - cluster.name=aws-demo-cluster
+      - node.name=demo-node
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - OPENSEARCH_JAVA_OPTS=-Xms300m -Xmx300m
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200"
+    healthcheck:
+      test: curl -s http://localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
+      start_period: 10s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks:
+      serversage-network:
+        aliases:
+          - opensearch
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command:
@@ -144,6 +182,7 @@ services:
       - "3000:3000"
     healthcheck:
       test: ["CMD", "curl -f http://localhost:3000/api/health || exit 1"]
+      start_period: 10s
       interval: 10s
       timeout: 5s
       retries: 10
@@ -153,6 +192,7 @@ services:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     environment:
       # GF_PATHS_DATA: /data/grafana
+      GF_INSTALL_PLUGINS: grafana-opensearch-datasource
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: serversage
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}

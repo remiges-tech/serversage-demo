@@ -17,6 +17,12 @@ exporters:
       insecure: true
   prometheus:
     endpoint: "0.0.0.0:8889"
+  opensearch:
+    logs_index: otel
+    http:
+      endpoint: "http://opensearch:9200"
+      tls:
+        insecure: true
 
 connectors:
   spanmetrics:
@@ -36,7 +42,9 @@ service:
       exporters: [spanmetrics, otlp]
     metrics/spanmetrics:
       receivers: [spanmetrics]
+      processors: [batch]
       exporters: [prometheus]
     logs:
       receivers: [otlp]
-      exporters: [otlp/logs] 
+      processors: [batch]
+      exporters: [otlp/logs, opensearch]
