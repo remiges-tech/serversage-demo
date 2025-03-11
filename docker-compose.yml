@@ -6,10 +6,7 @@ services:
     user: root
     command: >
       sh -c "
-        pwd
-        ls -la
         chown -R 1000:1000 /mnt/data/opensearch
-        pwd
         chmod -R ugo+rwx  /mnt/data/opensearch
         chmod -R ug+rwx,o-rwx /mnt/data/opensearch
       "
@@ -20,19 +17,7 @@ services:
       serversage-network:
         aliases:
           - volume-init
-  grafana-init:
-    image: alpine/curl:latest
-    depends_on:
-      grafana:
-        condition: service_healthy
-    command: 
-      - sh
-      - ./enable-grafana-oncall-plugin.sh
-    restart: "no" # Run once and exit
-    networks:
-      serversage-network:
-        aliases:
-          - grafana-init
+
   fastapi:
     image: ghcr.io/blueswen/opentelemetry-apm/fastapi:latest
     ports:
@@ -118,8 +103,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 700mb
-    restart: unless-stopped
+          memory: 900mb
+    restart: on-failure
     depends_on:
       - volume-init
     environment:
@@ -216,12 +201,6 @@ services:
     user: root
     ports:
       - "3000:3000"
-    healthcheck:
-      test: ["CMD", "curl -f http://localhost:3000/api/health || exit 1"]
-      start_period: 10s
-      interval: 10s
-      timeout: 5s
-      retries: 10
     volumes:
       - ./data/grafana:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -381,7 +360,6 @@ services:
       - "9187:9187"
     depends_on:
       - postgres
-#    restart: unless-stopped
     networks:
       serversage-network:
         aliases:

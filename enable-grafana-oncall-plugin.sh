@@ -1,2 +1,0 @@
-curl -X POST 'http://admin:serversage@localhost:3000/api/plugins/grafana-oncall-app/settings' -H "Content-Type: application/json" -d '{"enabled":true, "jsonData":{"stackId":5, "orgId":100, "onCallApiUrl":"http://oncall:8080", "grafanaUrl":"http://grafana:3000"}}' \
-curl -X POST 'http://admin:serversage@localhost:3000/api/plugins/grafana-oncall-app/resources/plugin/install'
