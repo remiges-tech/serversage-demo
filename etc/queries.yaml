@@ -14,37 +14,37 @@ pg_postmaster:
         description: "Time at which postmaster started"
 pg_database:
   query: "SELECT sum(pg_database_size(pg_database.datname)) as size FROM pg_database"
-  master: true
+  master: true        
   metrics:
     - size:
         usage: "GAUGE"
         description: "DB Size"
 pg_stat_user_tables:
   query: "SELECT
-      current_database() datname,
-      schemaname,
-      relname,
-      seq_scan,
-      seq_tup_read,
-      idx_scan,
-      idx_tup_fetch,
-      n_tup_ins,
-      n_tup_upd,
-      n_tup_del,
-      n_tup_hot_upd,
-      n_live_tup,
-      n_dead_tup,
-      n_mod_since_analyze,
-      COALESCE(last_vacuum, '1970-01-01Z') as last_vacuum,
-      COALESCE(last_autovacuum, '1970-01-01Z') as last_autovacuum,
-      COALESCE(last_analyze, '1970-01-01Z') as last_analyze,
-      COALESCE(last_autoanalyze, '1970-01-01Z') as last_autoanalyze,
-      vacuum_count,
-      autovacuum_count,
-      analyze_count,
-      autoanalyze_count
-        FROM
-      pg_stat_user_tables"
+     current_database() datname,
+     schemaname,
+     relname,
+     seq_scan,
+     seq_tup_read,
+     idx_scan,
+     idx_tup_fetch,
+     n_tup_ins,
+     n_tup_upd,
+     n_tup_del,
+     n_tup_hot_upd,
+     n_live_tup,
+     n_dead_tup,
+     n_mod_since_analyze,
+     COALESCE(last_vacuum, '1970-01-01Z') as last_vacuum,
+     COALESCE(last_autovacuum, '1970-01-01Z') as last_autovacuum,
+     COALESCE(last_analyze, '1970-01-01Z') as last_analyze,
+     COALESCE(last_autoanalyze, '1970-01-01Z') as last_autoanalyze,
+     vacuum_count,
+     autovacuum_count,
+     analyze_count,
+     autoanalyze_count
+   FROM
+     pg_stat_user_tables"
   metrics:
     - datname:
         usage: "LABEL"
@@ -148,6 +148,100 @@ pg_statio_user_tables:
     - tidx_blks_hit:
         usage: "COUNTER"
         description: "Number of buffer hits in this table's TOAST table indexes (if any)"
+pg_stat_statements:
+  query: "select
+      t2.rolname,
+      t3.datname,
+      query,
+      calls,
+      (total_plan_time + total_exec_time) / 1000 as total_time_seconds,
+      (min_plan_time + min_exec_time) / 1000 as min_time_seconds,
+      (max_plan_time + max_exec_time) / 1000 as max_time_seconds,
+      (mean_plan_time + mean_exec_time) / 1000 as mean_time_seconds,
+      (stddev_plan_time + stddev_exec_time) / 1000 as stddev_time_seconds,
+      rows,
+      shared_blks_hit,
+      shared_blks_read,
+      shared_blks_dirtied,
+      shared_blks_written,
+      local_blks_hit,
+      local_blks_read,
+      local_blks_dirtied,
+      local_blks_written,
+      temp_blks_read,
+      temp_blks_written,
+      blk_read_time / 1000 as blk_read_time_seconds,
+      blk_write_time / 1000 as blk_write_time_seconds from pg_stat_statements t1 join pg_roles t2 on (t1.userid = t2.oid) join pg_database t3 on
+      (t1.dbid = t3.oid) where
+      t2.rolname != 'rdsadmin'"
+  master: true
+  metrics:
+    - rolname:
+        usage: "LABEL"
+        description: "Name of user"
+    - datname:
+        usage: "LABEL"
+        description: "Name of database"
+    - queryid:
+        usage: "LABEL"
+        description: "Query ID"
+    - calls:
+        usage: "COUNTER"
+        description: "Number of times executed"
+    - total_time_seconds:
+        usage: "COUNTER"
+        description: "Total time spent in the statement, in milliseconds"
+    - min_time_seconds:
+        usage: "GAUGE"
+        description: "Minimum time spent in the statement, in milliseconds"
+    - max_time_seconds:
+        usage: "GAUGE"
+        description: "Maximum time spent in the statement, in milliseconds"
+    - mean_time_seconds:
+        usage: "GAUGE"
+        description: "Mean time spent in the statement, in milliseconds"
+    - stddev_time_seconds:
+        usage: "GAUGE"
+        description: "Population standard deviation of time spent in the statement, in milliseconds"
+    - rows:
+        usage: "COUNTER"
+        description: "Total number of rows retrieved or affected by the statement"
+    - shared_blks_hit:
+        usage: "COUNTER"
+        description: "Total number of shared block cache hits by the statement"
+    - shared_blks_read:
+        usage: "COUNTER"
+        description: "Total number of shared blocks read by the statement"
+    - shared_blks_dirtied:
+        usage: "COUNTER"
+        description: "Total number of shared blocks dirtied by the statement"
+    - shared_blks_written:
+        usage: "COUNTER"
+        description: "Total number of shared blocks written by the statement"
+    - local_blks_hit:
+        usage: "COUNTER"
+        description: "Total number of local block cache hits by the statement"
+    - local_blks_read:
+        usage: "COUNTER"
+        description: "Total number of local blocks read by the statement"
+    - local_blks_dirtied:
+        usage: "COUNTER"
+        description: "Total number of local blocks dirtied by the statement"
+    - local_blks_written:
+        usage: "COUNTER"
+        description: "Total number of local blocks written by the statement"
+    - temp_blks_read:
+        usage: "COUNTER"
+        description: "Total number of temp blocks read by the statement"
+    - temp_blks_written:
+        usage: "COUNTER"
+        description: "Total number of temp blocks written by the statement"
+    - blk_read_time_seconds:
+        usage: "COUNTER"
+        description: "Total time the statement spent reading blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)"
+    - blk_write_time_seconds:
+        usage: "COUNTER"
+        description: "Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)"
 pg_process_idle:
   query: |
     WITH
@@ -195,7 +289,7 @@ pg_active_lockedsql:
   query: |
     select case  when replace(replace(pg_blocking_pids(pid)::text,'{',''),'}','')='' then 'numsofnopidblock'  else 'numsofsomepidblock' end  pidblock,
     count(1) pidnums from pg_stat_activity 
-    where state not in('idle') and query !='' group by pidblock order by pidblock;
+    where state not in('idle') and query !=''  group by pidblock order by pidblock;
   metrics:
     - pidblock:
         usage: "LABEL"
@@ -205,8 +299,8 @@ pg_active_lockedsql:
         description: "The number of processes"
 pg_active_slowsql:
   query: |
-    select datname,usename,count(1) slowsql_count
-    from pg_stat_activity where state not in('idle') and query !=''
+    select datname,usename,count(1) slowsql_count          
+    from pg_stat_activity where state not in('idle') and query !='' 
     and extract(epoch from (now() - query_start)) > 60*5 group by datname,usename order by count(1) desc;
   metrics:
     - datname:
@@ -218,39 +312,6 @@ pg_active_slowsql:
     - slowsql_count:
         usage: "COUNTER"
         description: "the numbers of slow sqls"
-# pg_active_slowqry:
-#   help: "Execution time of queries in milliseconds"
-#   query: |
-#     SELECT 
-#         EXTRACT(MILLISECONDS FROM (now() - t1.query_start)) AS qry_ex_time, 
-#         t1.query, 
-#         t1.state, 
-#         t2.rolname, 
-#         t1.datname
-#     FROM 
-#         pg_stat_activity t1, 
-#         pg_roles t2
-#     WHERE 
-#         t1.query != '' AND 
-#         t1.usesysid = t2.oid
-#     ORDER BY 
-#         qry_ex_time DESC;
-#   metrics:
-#   - qry_ex_time:
-#       usage: "GAUGE"
-#       description: "Execution time of queries in milliseconds"
-#   - query:
-#       usage: "INFO"
-#       description: "The query being executed"
-#   - state:
-#       usage: "INFO"
-#       description: "State of the query"
-#   - rolname:
-#       usage: "INFO"
-#       description: "Role name executing the query"
-#   - datname:
-#       usage: "INFO"
-#       description: "Database name"
 pg_never_used_indexes:
   query: |
     select pi.schemaname, pi.relname, pi.indexrelname, 

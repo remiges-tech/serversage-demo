@@ -20,8 +20,17 @@ export default function () {
         role: "USER"
       })
     },
-    { method: 'GET', url: 'http://localhost:8082/api/users' },
-    { method: 'GET', url: 'http://localhost:8082/api/users/1' }
+    {
+      method: 'PUT',
+      url: 'http://localhost:8082/api/users/1',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: "Savu Davre",
+        email: "jane.sss@example.com",
+        role: "USER"
+      })
+    },
+    { method: 'GET', url: 'http://localhost:8082/api/users/2' }
   ];
 
   additionalEndpoints.forEach(function(endpoint) {
@@ -29,6 +38,8 @@ export default function () {
       http.get(endpoint.url);
     } else if (endpoint.method === 'POST') {
       http.post(endpoint.url, endpoint.body, { headers: endpoint.headers });
+    } else if (endpoint.method === 'PUT') {
+      http.put(endpoint.url, endpoint.body, { headers: endpoint.headers });
     }
   });
 
@@ -38,5 +49,5 @@ export default function () {
       http.get("http://" + server + endpoint);
     });
   });
-  sleep(0.5);
+  sleep(0.2);
 }

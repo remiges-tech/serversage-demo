@@ -27,7 +27,7 @@ services:
       - TARGET_TWO_SVC=spring-boot:8081
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_METRICS_EXPORTER=none
+      - OTEL_METRICS_EXPORTER=otlp
       - OTEL_SERVICE_NAME=fastapi
     command: "opentelemetry-instrument python main.py"
     container_name: serversage-fastapi
@@ -44,11 +44,13 @@ services:
       - TARGET_ONE_SVC=fastapi:8000
       - TARGET_TWO_SVC=fastapi:8000
       - SERVER_PORT=8081
-      - OTEL_EXPORTER=otlp_span
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-      - OTEL_EXPORTER_OTLP_INSECURE=true
-      - OTEL_METRICS_EXPORTER=none
       - OTEL_SERVICE_NAME=spring-boot
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      # - OTEL_EXPORTER=otlp
+      # - OTEL_TRACES_EXPORTER=otlp
+      # - OTEL_METRICS_EXPORTER=otlp
+      # - OTEL_LOGS_EXPORTER=otlp
     command: "java -javaagent:/opentelemetry-javaagent.jar -jar /app.jar"
     container_name: serversage-spring-boot
     networks:
@@ -62,11 +64,16 @@ services:
       - "8082:8082"
     environment:
       - SERVER_PORT=8082
-      - OTEL_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-      - OTEL_EXPORTER_OTLP_INSECURE=true
-      - OTEL_METRICS_EXPORTER=none
       - OTEL_SERVICE_NAME=spring-boot-user
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      # - OTEL_EXPORTER=otlp
+      # - OTEL_TRACES_EXPORTER=otlp
+      # - OTEL_METRICS_EXPORTER=otlp
+      # - OTEL_LOGS_EXPORTER=otlp
+      # - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4318/v1/traces"
+      # - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="http://otel-collector:4318/v1/metrics"
+      # - OTEL_EXPORTER_OTLP_LOGS_ENDPOINT="http://otel-collector:4318/v1/logs"
       - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
@@ -185,6 +192,9 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-remote-write-receiver'
+      - '--enable-feature=exemplar-storage'
+      - '--enable-feature=native-histograms'
       # - '--storage.tsdb.retention.time=30d'  # Set retention period
       # - '--storage.tsdb.retention.size=50GB'  # Data older than 30d OR exceeding 50GB will be deleted
     restart: unless-stopped
@@ -231,6 +241,7 @@ services:
       GF_PLUGINS_PREINSTALL: grafana-llm-app,grafana-oncall-app
     depends_on:
       - prometheus
+      - tempo
     restart: unless-stopped
     networks:
       serversage-network:
@@ -348,23 +359,6 @@ services:
         aliases:
           - redis
 
-  postgres_exporter:
-    image: prometheuscommunity/postgres-exporter:latest
-    container_name: serversage-postgres-exporter
-    environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
-      # PG_EXPORTER_EXTEND_QUERY_PATH: "/queries.yaml"
-    volumes:
-      - ./etc/queries.yaml:/queries.yaml
-    ports:
-      - "9187:9187"
-    depends_on:
-      - postgres
-    networks:
-      serversage-network:
-        aliases:
-          - postgres-exporter
-
   cloudwatch-exporter:
     image: prom/cloudwatch-exporter:latest
     ports:
@@ -383,20 +377,6 @@ services:
       serversage-network:
         aliases:
           - cloudwatch-exporter
-
-  postgres:
-    image: postgres:16
-    container_name: postgres_demo
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    networks:
-      serversage-network:
-        aliases:
-          - postgres
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0.1
@@ -450,6 +430,37 @@ services:
       serversage-network:
         aliases:
           - node-exporter
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: serversage-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+      PG_EXPORTER_EXTEND_QUERY_PATH: "/queries.yaml"
+    volumes:
+      - ./etc/queries.yaml:/queries.yaml
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+    networks:
+      serversage-network:
+        aliases:
+          - postgres-exporter
+          
+  postgres:
+    image: postgres:16
+    container_name: postgres_demo
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      serversage-network:
+        aliases:
+          - postgres
 
 networks:
   serversage-network:
