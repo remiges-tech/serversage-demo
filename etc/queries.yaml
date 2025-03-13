@@ -154,11 +154,11 @@ pg_stat_statements:
       t3.datname,
       query,
       calls,
-      (total_plan_time + total_exec_time) / 1000 as total_time_seconds,
-      (min_plan_time + min_exec_time) / 1000 as min_time_seconds,
-      (max_plan_time + max_exec_time) / 1000 as max_time_seconds,
-      (mean_plan_time + mean_exec_time) / 1000 as mean_time_seconds,
-      (stddev_plan_time + stddev_exec_time) / 1000 as stddev_time_seconds,
+      (total_exec_time / 1000) as total_time_seconds,
+      (min_exec_time / 1000) as min_time_seconds,
+      (max_exec_time / 1000) as max_time_seconds,
+      (mean_exec_time / 1000) as mean_time_seconds,
+      (stddev_exec_time / 1000) as stddev_time_seconds,
       rows,
       shared_blks_hit,
       shared_blks_read,
@@ -182,9 +182,9 @@ pg_stat_statements:
     - datname:
         usage: "LABEL"
         description: "Name of database"
-    - queryid:
+    - query:
         usage: "LABEL"
-        description: "Query ID"
+        description: "Query"
     - calls:
         usage: "COUNTER"
         description: "Number of times executed"
