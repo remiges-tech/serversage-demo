@@ -79,6 +79,7 @@
           },
           "editorMode": "code",
           "expr": "sum(traces_span_metrics_duration_milliseconds_count{span_kind=\"SPAN_KIND_SERVER\", service_name=\"$app\", http_route=~\"$route\"}) by(service_name)",
+          "hide": false,
           "instant": true,
           "legendFormat": "{{label_name}}",
           "range": true,
@@ -161,8 +162,9 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(traces_span_metrics_duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code=~\"^2.*\", http_route=~\"$route\"}) by(http_status_code)",
+          "expr": "sum(sum(traces_span_metrics_duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code=~\"^2.*\", http_route=~\"$route\"}) by(http_status_code))",
           "format": "time_series",
+          "hide": false,
           "instant": true,
           "legendFormat": "Http Status 2XX",
           "range": true,
@@ -175,7 +177,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code=~\"^3.*\", http_route=~\"$route\"}) by(http_status_code)",
+          "expr": "sum(sum(traces_span_metrics_duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code=~\"^3.*\", http_route=~\"$route\"}) by(http_status_code))",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -190,7 +192,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(traces_span_metrics_duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code=~\"^4.*\", http_route=~\"$route\"}) by(http_status_code)",
+          "expr": "sum(sum(traces_span_metrics_duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code=~\"^4.*\", http_route=~\"$route\"}) by(http_status_code))",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -205,13 +207,28 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(traces_span_metrics_duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code=~\"^5.*\", http_route=~\"$route\"}) by(http_status_code)",
+          "expr": "sum(sum(traces_span_metrics_duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code=~\"^5.*\", http_route=~\"$route\"}) by(http_status_code))",
           "format": "time_series",
           "hide": false,
           "instant": true,
           "legendFormat": "Http Status 5XX",
           "range": true,
           "refId": "5XX"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum (sum(traces_span_metrics_duration_milliseconds_count{service_name=\"$app\", span_kind=\"SPAN_KIND_SERVER\", http_status_code!=\"^5.*\", http_route=~\"$route\"}) by(http_status_code))",
+          "format": "time_series",
+          "hide": true,
+          "instant": true,
+          "legendFormat": "{{http_status_code}}",
+          "range": true,
+          "refId": "OTHER"
         }
       ],
       "title": "Requests Count",
@@ -337,7 +354,42 @@
           "mappings": [],
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "DELETE /order",
+                  "GET /chain",
+                  "GET /error_test",
+                  "GET /init",
+                  "GET /order",
+                  "GET /random_sleep",
+                  "GET /random_status",
+                  "GET /rejected_order",
+                  "GET /total_order",
+                  "POST /order",
+                  "PUT /order"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -445,7 +497,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(traces_span_metrics_duration_milliseconds_count{span_kind=\"SPAN_KIND_SERVER\", service_name=\"$app\", http_route=~\"$route\"}[3m])*60)",
+          "expr": "sum(rate(traces_span_metrics_duration_milliseconds_count{span_kind=\"SPAN_KIND_SERVER\", service_name=\"$app\", exported_job=\"$app\", http_route=~\"$route\"}[$__range])*60)",
           "hide": false,
           "instant": false,
           "range": true,
@@ -513,7 +565,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(traces_span_metrics_duration_milliseconds_count{span_kind=\"SPAN_KIND_SERVER\", service_name=\"$app\", http_status_code=~\"5.*|\", http_route=~\"$route\"})/sum(traces_span_metrics_duration_milliseconds_count{span_kind=\"SPAN_KIND_SERVER\", service_name=\"$app\", http_route=~\"$route\"})",
+          "expr": "sum(rate(traces_span_metrics_duration_milliseconds_count{http_status_code=~\"4.*|5.*\", http_route=~\"$route\", exported_job=\"$app\"}[$__range])) / sum(rate(traces_span_metrics_duration_milliseconds_count{http_route=~\"$route\", exported_job=\"$app\"}[$__range]))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -1100,7 +1152,10 @@
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "text": "spring-boot",
+          "value": "spring-boot"
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
@@ -1120,9 +1175,7 @@
       },
       {
         "current": {
-          "text": [
-            "All"
-          ],
+          "text": "All",
           "value": [
             "$__all"
           ]

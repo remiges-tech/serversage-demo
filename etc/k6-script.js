@@ -4,7 +4,7 @@ import { sleep } from 'k6';
 export default function () {
 
   var server_list = ["localhost:8081"]
-  var endpoint_list = ["/init", "/order","/order/{id}","order_list","/total_order","/rejected_order","/cpu_task", "/random_sleep", "/random_status", "/chain", "/error_test"]
+  var endpoint_list = ["/init", "/order","/order/{id}","/order_list","/total_order","/rejected_order","/cpu_task", "/random_sleep", "/random_status", "/chain", "/error_test"]
 
   // Additional API calls on port 8081
   var additionalEndpoints = [
