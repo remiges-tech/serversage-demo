@@ -18,40 +18,21 @@ services:
         aliases:
           - volume-init
 
-  fastapi:
-    image: ghcr.io/blueswen/opentelemetry-apm/fastapi:latest
-    ports:
-      - "8000:8000"
-    environment:
-      - TARGET_ONE_SVC=spring-boot:8081
-      - TARGET_TWO_SVC=spring-boot:8081
-      - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_METRICS_EXPORTER=otlp
-      - OTEL_SERVICE_NAME=fastapi
-    command: "opentelemetry-instrument python main.py"
-    container_name: serversage-fastapi
-    networks:
-      serversage-network:
-        aliases:
-          - fastapi
 
   spring-boot:
-    image: aniketxshinde/serversage:0.1.0
+    image: aniketxshinde/serversage:0.1.2
     ports:
       - "8081:8081"
     environment:
-      - TARGET_ONE_SVC=fastapi:8000
-      - TARGET_TWO_SVC=fastapi:8000
       - SERVER_PORT=8081
       - OTEL_SERVICE_NAME=spring-boot
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-      # - OTEL_EXPORTER=otlp
-      # - OTEL_TRACES_EXPORTER=otlp
-      # - OTEL_METRICS_EXPORTER=otlp
-      # - OTEL_LOGS_EXPORTER=otlp
     command: "java -javaagent:/opentelemetry-javaagent.jar -jar /app.jar"
+    deploy:
+      resources:
+        limits:
+          memory: 300M
     container_name: serversage-spring-boot
     networks:
       serversage-network:
@@ -67,40 +48,20 @@ services:
       - OTEL_SERVICE_NAME=spring-boot-user
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-      # - OTEL_EXPORTER=otlp
-      # - OTEL_TRACES_EXPORTER=otlp
-      # - OTEL_METRICS_EXPORTER=otlp
-      # - OTEL_LOGS_EXPORTER=otlp
-      # - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4318/v1/traces"
-      # - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="http://otel-collector:4318/v1/metrics"
-      # - OTEL_EXPORTER_OTLP_LOGS_ENDPOINT="http://otel-collector:4318/v1/logs"
       - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
     command: "java -javaagent:/opentelemetry-javaagent.jar -jar ./app-user.jar"
+    deploy:
+      resources:
+        limits:
+          memory: 300M
     container_name: serversage-spring-boot-user
     networks:
       serversage-network:
         aliases:
           - spring-boot-user
 
-  express:
-    image: ghcr.io/blueswen/opentelemetry-apm/express:latest
-    ports:
-      - "3001:3001"
-    environment:
-      - EXPOSE_PORT=3001
-      - TARGET_ONE_SVC=fastapi:8000
-      - TARGET_TWO_SVC=fastapi:8000
-      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_SERVICE_NAME=express
-    command: "node --require '@opentelemetry/auto-instrumentations-node/register' app.js"
-    container_name: serversage-express
-    networks:
-      serversage-network:
-        aliases:
-          - express
 
 # OpenSearch
   opensearch:
@@ -157,6 +118,10 @@ services:
       - "8889:8889" # Prometheus metrics exporter
     restart: on-failure
     container_name: otel-collector
+    deploy:
+      resources:
+        limits:
+          memory: 120M
     networks:
       serversage-network:
         aliases:
@@ -172,6 +137,10 @@ services:
     ports:
       - "3200:3200"   # tempo
       - "4317:4317"  # otlp grpc
+    deploy:
+      resources:
+        limits:
+          memory: 400M
     container_name: serversage-tempo
     networks:
       serversage-network:
@@ -243,6 +212,10 @@ services:
       - prometheus
       - tempo
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 200M
     networks:
       serversage-network:
         aliases:
